@@ -1,0 +1,29 @@
+name: deploy-main
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: executing remote ssh commands using ssh key
+        uses: appleboy/ssh-action@dce9d565de8d876c11d93fa4fe677c0285a66d78
+        with:
+          host: ${{ vars.SSH_HOST_MASTER }}
+          username: ${{ vars.SSH_USER_MASTER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_MASTER }}
+          port: ${{ vars.SSH_PORT_MASTER }}
+          script: |
+            cd ${{ vars.SITE_ROOT_MASTER }}
+            git pull
+            cd local
+            php ./bin/migrate.php up --config=main
+            [ -f ./composer.phar ] || php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+            [ -f ./composer.phar ] || php ./composer-setup.php
+            [ -f ./composer-setup.php ] && php -r "unlink('composer-setup.php');"
+            php ./composer.phar update
+            php ./console.php constants
